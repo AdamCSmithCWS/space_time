@@ -193,9 +193,9 @@ parms <- c("sd_beta_mod",
            "beta_time_space",
            "beta_dif",
            "alpha") 
-  burnInSteps = 500            # Number of steps to "burn-in" the samplers.
+  burnInSteps = 500            # Number of steps to "burn-in" the samplers. this is sufficient for testing, but you'll want to increase this
 nChains = 3                   # Number of chains to run.
-numSavedSteps=300         # Total number of steps in each chain to save.
+numSavedSteps=300         # Total number of steps in each chain to save. this is sufficient for testing, but you'll want to increase this
 thinSteps=10                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
 
@@ -213,9 +213,18 @@ out = jagsUI(data = jags_dat,
 
 
 
-out$mean$beta_time_space
+# out = jagsUI object, see the package help to explore
+out$mean$beta_time_space #posterior means of the slope parameters
+
+100*((B.space.time - out$mean$beta_time_space)/B.space.time) #% difference in posterior means and the true simulated values
 
 
+out$summary #table showing a summary of the posterior distribution and some basic convergence stats for all the monitored parameters
+
+out_ggs = ggs(out$samples)
+ggmcmc(out_ggs,file = "convergence summaries.pdf", paparam_page = 8)
+
+#### 
 # library(bbsBayes)
 # model_to_file(model = "slope",filename = "bbs_slope_model.r")
 # model_to_file(model = "slope",filename = "bbs_slope_model_heavy_tails.r",heavy_tailed = TRUE)
