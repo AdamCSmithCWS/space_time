@@ -31,8 +31,14 @@ taunoise ~ dgamma(0.001,0.001) #prior on the precision (inverse of the variance)
 
 for(s in 1:nspecies){
 ### species-level intercepts
-  alpha[s] ~ dnorm(0,0.1) #weakly informative prior on the species intercept (mean across regions, hyperparameter)
-  tau_regs_s[s] ~ dgamma(0.001,0.001) #prior on the precision for the regional variation in species mean abundance
+  alpha[s] ~ dnorm(0,1) #weakly informative prior on the species intercept (mean across regions, hyperparameter)
+  #tau_regs_s[s] ~ dgamma(0.001,0.001) #prior on the precision for the regional variation in species mean abundance
+  ### alternative half-t prior
+
+ regs_st[s] ~ dt(0, 1, 20) T(0,)     #
+ sd_regs_s[s] <- 1 * regs_st[s]
+ tau_regs_s[s] <- 1/pow(sd_regs_s[s],2)
+  
   for(g in 1:nregions){
   int[g,s] ~ dnorm(alpha[s],tau_regs_s[s]) #int[g,s] = species-level intercept in region-g (random effect centered on species-level mean)
 }
@@ -86,8 +92,8 @@ e_beta_mod[s] ~ dnorm(B_mod,tau_beta_mod)
 ## it could work well in the opposite direction too, if space was the base-slope and the modification was to estimate time-slopes
 ## could also estimate the probability that the beta_time_space[s,1]
 I[s] ~ dbern(psi[s])
-    alpha_psi[s] ~ dunif(1,3)
-    beta_psi[s] ~ dunif(1,3)
+    alpha_psi[s] ~ dunif(2,3)
+    beta_psi[s] ~ dunif(1,2)
     psi[s] ~ dbeta(alpha_psi[s],beta_psi[s])
     
 #######################################################
@@ -131,9 +137,10 @@ beta_dif[s] <- beta_time_space[s,1]-beta_time_space[s,2]
  #tau_beta_time_space1 ~ dgamma(0.001,0.001) # alternative random effects precision for the time-slopes
  #sd_beta_mod <- 1/pow(tau_beta_mod,0.5)
 
-### alternative half-cauchy prior
+### alternative half-t prior
 
- sd_beta_mod ~ dt(0, 0.16, 1) T(0,)     # cauchy = normal/sqrt(chi^2)
+ sd_beta_modt ~ dt(0, 1, 20) T(0,)     #
+ sd_beta_mod <- 0.1 * sd_beta_modt
  tau_beta_mod <- 1/pow(sd_beta_mod,2)
 }
 
