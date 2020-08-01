@@ -27,7 +27,7 @@ nregions = length(unique(dat$region)) #number of regions
 
 
 ## True trends for time 
-B = c(1,0.5,2,-2,-1.5,1) #true species slopes for p_forest (change in log-scale counts for a unit change in p_forest) note: a unit change in proportional variable = change from no forest to complete forest, so these values are relatively large
+B = c(1,0,2,-2,-1.5,1) #true species slopes for p_forest (change in log-scale counts for a unit change in p_forest) note: a unit change in proportional variable = change from no forest to complete forest, so these values are relatively large
 
 ## True proportional change in slope for space i.e., here space-slopes are 90% of the value for time - on average across all species
 True.mean.modifier.space <- 0.9
@@ -35,7 +35,7 @@ True.mod.B <- rnorm(nspecies,True.mean.modifier.space,0.05) #random variation am
 
 #table of the True slopes for each species in time (column-1) and space (column-2)
 B.space.time = matrix(c(B,True.mod.B*B),nrow = nspecies,ncol = 2,byrow = FALSE) #random 1%/year variance around the specie-leve mean response based on time or space
-
+B.space.time[2,2] <- -0.8
 
 ## species abundances = True intercepts
 a.sp = runif(nspecies,0.5,2) #coarse mean counts overall
@@ -88,6 +88,8 @@ log(lambda[k]) <- (beta_time_space[species[k],space_time[k]] * (p_forest[k]-0.5)
 	
 	#	nu ~ dgamma(2, 0.1) #degrees of freedom (i.e., the heavy-tail component of the t-distribution), if nu is large (infinite) this is equivalent to the normal distribution noise
 
+min_slope <- 0.1 
+
 taunoise ~ dgamma(0.001,0.001) #prior on the precision (inverse of the variance) of the overdispersion
 	sdnoise <- 1 / pow(taunoise, 0.5) #transformation of the precision into a standard deviation scale that is easier to interpret
 
@@ -107,7 +109,7 @@ for(s in 1:nspecies){
 beta_time_space[s,1] ~ dnorm(0,0.01) #treats the species-level time slopes as fixed effects (so makes no assumption about the direction or magnitude of the species response to forest)
 ## alternatively, one could estimate the slopes as random effects, which would reduce the influence of data-sparse species
 # beta_time_space[s,1] ~ dnorm(0,tau_beta_time_space1) #treats the species-level time slopes as fixed effects (so makes no assumption about the direction or magnitude of the species response to forest)
-
+beta_time_space_alt[s] ~ dnorm(0,0.01)
 
 ################################### Alternative 1
 ### multiplicative modification of the time-slope to generate the space-slope
@@ -116,7 +118,27 @@ beta_time_space[s,1] ~ dnorm(0,0.01) #treats the species-level time slopes as fi
 ### if beta_mod[s] == 1, then there is no difference in the space and time slopes
 ### if beta_mod[s] > 1 then there is a stronger effect of space than time
 ### if beta_mod[s] < 1 then there is a weaker effect of space than time
-beta_time_space[s,2] <- beta_time_space[s,1]*beta_mod[s]
+#beta_time_space[s,2] <- beta_time_space[s,1]*beta_mod[s]
+
+#exponential model to estimate a strictly positive, multiplicative change in slope
+## allows for consistent differences in the strength of the slope, while ignoring the direction of the effect for a given species
+# log(beta_mod[s]) <- e_beta_mod[s]
+# e_beta_mod[s] ~ dnorm(B_mod,tau_beta_mod)
+## this multiplicative approach may fall apart if there is no time-slope
+## that is, if beta_time_space[s,1] == 0, then beta_mod[s] would be imposible to estimate
+## hopefully, the sharing of infor among species, and the prior would then shrink that species estimates for both slopes to 1
+## it could work well in the opposite direction too, if space was the base-slope and the modification was to estimate time-slopes
+#######################################################
+
+
+################################### Alternative 1.1
+### multiplicative modification of the time-slope to generate the space-slope, plus an indicator variable that removes the relationship between the time and space slope when the time slope is lower than a particular threshold
+### using a strictly positive, multiplicative modification (instead of a simple additive effect) so that
+### the sharing of information among species only assumes some change in the magnitude of the slope, instead of a change in direction
+### if beta_mod[s] == 1, then there is no difference in the space and time slopes
+### if beta_mod[s] > 1 then there is a stronger effect of space than time
+### if beta_mod[s] < 1 then there is a weaker effect of space than time
+beta_time_space[s,2] <- (beta_time_space[s,1]*I[s])*beta_mod[s] + (beta_time_space_alt[s]*((I[s]-1)*-1))
 
 #exponential model to estimate a strictly positive, multiplicative change in slope
 ## allows for consistent differences in the strength of the slope, while ignoring the direction of the effect for a given species
@@ -126,8 +148,13 @@ e_beta_mod[s] ~ dnorm(B_mod,tau_beta_mod)
 ## that is, if beta_time_space[s,1] == 0, then beta_mod[s] would be imposible to estimate
 ## hopefully, the sharing of infor among species, and the prior would then shrink that species estimates for both slopes to 1
 ## it could work well in the opposite direction too, if space was the base-slope and the modification was to estimate time-slopes
+## could also estimate the probability that the beta_time_space[s,1]
+I[s] ~ dbern(psi[s])
+    alpha_psi[s] ~ dunif(1,3)
+    beta_psi[s] ~ dunif(1,3)
+    psi[s] ~ dbeta(alpha_psi[s],beta_psi[s])
+    
 #######################################################
-
 
 ####################################################### Alternative 2 - commented out
 ## alternative additive model (currently commented out) that shares information among species but does not require the time-slope to be non-zero
@@ -150,7 +177,7 @@ e_beta_mod[s] ~ dnorm(B_mod,tau_beta_mod)
 #beta_time_space[s,2] <- beta_time_space[s,1]+beta_mod[s]
 #beta_mod[s] ~ dnorm(0,tau_beta_mod)
 ## this same mean-zero random effect approach could also be used for the time-slope estimates to provide the same benefits for data-sparse species there
-## e.g., 
+## e.g., see note above 
 ## 
 #######################################################
 
@@ -192,10 +219,12 @@ parms <- c("sd_beta_mod",
            "beta_mod",
            "beta_time_space",
            "beta_dif",
-           "alpha") 
+           "alpha",
+           "I",
+           "psi") 
   burnInSteps = 500            # Number of steps to "burn-in" the samplers. this is sufficient for testing, but you'll want to increase this
 nChains = 3                   # Number of chains to run.
-numSavedSteps=300         # Total number of steps in each chain to save. this is sufficient for testing, but you'll want to increase this
+numSavedSteps=1000         # Total number of steps in each chain to save. this is sufficient for testing, but you'll want to increase this
 thinSteps=10                   # Number of steps to "thin" (1=keep every step).
 nIter = ceiling( ( (numSavedSteps * thinSteps )+burnInSteps)) # Steps per chain.
 
@@ -215,6 +244,7 @@ out = jagsUI(data = jags_dat,
 
 # out = jagsUI object, see the package help to explore
 out$mean$beta_time_space #posterior means of the slope parameters
+B.space.time # true slopes
 
 100*((B.space.time - out$mean$beta_time_space)/B.space.time) #% difference in posterior means and the true simulated values
 
