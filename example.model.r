@@ -127,12 +127,14 @@ beta_dif[s] <- beta_time_space[s,1]-beta_time_space[s,2]
 
  # hyperparameter for beta_mod treated as random effect
  B_mod ~ dnorm(0,0.1)
- tau_beta_mod ~ dgamma(0.001,0.001)
+ #tau_beta_mod ~ dgamma(0.001,0.001)
  #tau_beta_time_space1 ~ dgamma(0.001,0.001) # alternative random effects precision for the time-slopes
- 
- sd_beta_mod <- 1/pow(tau_beta_mod,0.5)
+ #sd_beta_mod <- 1/pow(tau_beta_mod,0.5)
 
+### alternative half-cauchy prior
 
+ sd_beta_mod ~ dt(0, 0.16, 1) T(0,)     # cauchy = normal/sqrt(chi^2)
+ tau_beta_mod <- 1/pow(sd_beta_mod,2)
 }
 
 
