@@ -99,7 +99,7 @@ for(s in 1:nspecies){
   #tau_regs_s[s] ~ dgamma(0.001,0.001) #prior on the precision for the regional variation in species mean abundance
   ### alternative half-t prior
 
- regs_st[s] ~ dt(0, 1, 20) T(0,)     #
+ regs_st[s] ~ dt(0, 1, 20) T(0,)     #half-t prior on the standard deviation
  sd_regs_s[s] <- 1 * regs_st[s]
  tau_regs_s[s] <- 1/pow(sd_regs_s[s],2)
   
@@ -115,7 +115,7 @@ for(s in 1:nspecies){
 beta_time_space[s,1] ~ dnorm(0,0.01) #treats the species-level time slopes as fixed effects (so makes no assumption about the direction or magnitude of the species response to forest)
 ## alternatively, one could estimate the slopes as random effects, which would reduce the influence of data-sparse species
 # beta_time_space[s,1] ~ dnorm(0,tau_beta_time_space1) #treats the species-level time slopes as fixed effects (so makes no assumption about the direction or magnitude of the species response to forest)
-beta_time_space_alt[s] ~ dnorm(0,0.01)
+beta_time_space_alt[s] ~ dnorm(0,0.01) #alternate calcluation of a slope for the space effect, that only gets informed when psi[s] is low, and I[s] == 0 - see below
 
 ################################### Alternative 1
 ### multiplicative modification of the time-slope to generate the space-slope
@@ -196,7 +196,7 @@ beta_dif[s] <- beta_time_space[s,1]-beta_time_space[s,2]
 
 
  # hyperparameter for beta_mod treated as random effect
- B_mod ~ dnorm(0,0.1)
+ B_mod ~ dnorm(0,7) #informative prior placing 95% of the prior between 0.5 and 2.0 for the multiplicative difference averaged across species
  #tau_beta_mod ~ dgamma(0.001,0.001)
  #tau_beta_time_space1 ~ dgamma(0.001,0.001) # alternative random effects precision for the time-slopes
  #sd_beta_mod <- 1/pow(tau_beta_mod,0.5)
@@ -204,7 +204,7 @@ beta_dif[s] <- beta_time_space[s,1]-beta_time_space[s,2]
 ### alternative half-t prior
 
  sd_beta_modt ~ dt(0, 1, 20) T(0,)     #
- sd_beta_mod <- 0.1 * sd_beta_modt
+ sd_beta_mod <- 0.5 * sd_beta_modt  # informative prior on sd_beta_mod putting 95% of the prior below ~1 on the log scale = so the prior on the species multiplicative factors puts 95% of the prior weight between ~ 0.1 and 9
  tau_beta_mod <- 1/pow(sd_beta_mod,2)
 }
 
@@ -231,7 +231,7 @@ parms <- c("sd_beta_mod",
            "alpha",
            "I",
            "psi") 
-  burnInSteps = 500            # Number of steps to "burn-in" the samplers. this is sufficient for testing, but you'll want to increase this
+  burnInSteps = 2000            # Number of steps to "burn-in" the samplers. this is sufficient for testing, but you'll want to increase this
 nChains = 3                   # Number of chains to run.
 numSavedSteps=1000         # Total number of steps in each chain to save. this is sufficient for testing, but you'll want to increase this
 thinSteps=10                   # Number of steps to "thin" (1=keep every step).
