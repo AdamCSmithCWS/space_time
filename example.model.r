@@ -26,8 +26,14 @@ log(lambda[k]) <- (beta_time_space[species[k],space_time[k]] * (p_forest[k]-0.5)
 
 min_slope <- 0.1 
 
-taunoise ~ dgamma(0.001,0.001) #prior on the precision (inverse of the variance) of the overdispersion
-	sdnoise <- 1 / pow(taunoise, 0.5) #transformation of the precision into a standard deviation scale that is easier to interpret
+# taunoise ~ dgamma(0.001,0.001) #prior on the precision (inverse of the variance) of the overdispersion
+# 	sdnoise <- 1 / pow(taunoise, 0.5) #transformation of the precision into a standard deviation scale that is easier to interpret
+
+ sdnoiset ~ dt(0, 1, 20) T(0,)     #half-t prior on the standard deviation
+ sdnoise <- 0.1 * sdnoiset      #informative prior on sdnoise putting 95% of the prior below ~0.5 on the log scale 
+ taunoise <- 1/pow(sdnoise,2)
+ 
+
 
 for(s in 1:nspecies){
 ### species-level intercepts

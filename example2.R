@@ -43,7 +43,7 @@ a.sp = runif(nspecies,0.5,2) #coarse mean counts overall
 a.reg = rnorm(nregions,0,0.1)#random variation in abundance among regions
 
 #relatively small amoung of overdispersion
-noise <- 0.001 #itnroduced overdispersion
+noise <- 0.1 #itnroduced overdispersion
 
 #NOTE: this all ignore observers, but that shouldn't be too hard to add in afterwards
 
@@ -90,8 +90,14 @@ log(lambda[k]) <- (beta_time_space[species[k],space_time[k]] * (p_forest[k]-0.5)
 
 min_slope <- 0.1 
 
-taunoise ~ dgamma(0.001,0.001) #prior on the precision (inverse of the variance) of the overdispersion
-	sdnoise <- 1 / pow(taunoise, 0.5) #transformation of the precision into a standard deviation scale that is easier to interpret
+# taunoise ~ dgamma(0.001,0.001) #prior on the precision (inverse of the variance) of the overdispersion
+# 	sdnoise <- 1 / pow(taunoise, 0.5) #transformation of the precision into a standard deviation scale that is easier to interpret
+
+ sdnoiset ~ dt(0, 1, 20) T(0,)     #half-t prior on the standard deviation
+ sdnoise <- 0.1 * sdnoiset      #informative prior on sdnoise putting 95% of the prior below ~0.5 on the log scale 
+ taunoise <- 1/pow(sdnoise,2)
+ 
+
 
 for(s in 1:nspecies){
 ### species-level intercepts
@@ -196,7 +202,7 @@ beta_dif[s] <- beta_time_space[s,1]-beta_time_space[s,2]
 
 
  # hyperparameter for beta_mod treated as random effect
- B_mod ~ dnorm(0,7) #informative prior placing 95% of the prior between 0.5 and 2.0 for the multiplicative difference averaged across species
+ B_mod ~ dnorm(0,7) #informative prior placing 95% of the prior between 0.5 and 2.0 for the multiplicative difference averaged across species - possibly too strong a prior
  #tau_beta_mod ~ dgamma(0.001,0.001)
  #tau_beta_time_space1 ~ dgamma(0.001,0.001) # alternative random effects precision for the time-slopes
  #sd_beta_mod <- 1/pow(tau_beta_mod,0.5)
@@ -230,7 +236,10 @@ parms <- c("sd_beta_mod",
            "beta_dif",
            "alpha",
            "I",
-           "psi") 
+           "psi",
+           "sdnoise",
+           "sd_reg",
+           "int") 
   burnInSteps = 2000            # Number of steps to "burn-in" the samplers. this is sufficient for testing, but you'll want to increase this
 nChains = 3                   # Number of chains to run.
 numSavedSteps=1000         # Total number of steps in each chain to save. this is sufficient for testing, but you'll want to increase this
