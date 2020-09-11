@@ -180,7 +180,8 @@ I[s] ~ dbern(psi[s])
 
 
 ####################################################### Alternative 3 - commented out
-## alternative random-effect model that does not share information among species
+## alternative random-effect model that does not share information among species on the direction or magnitude of the difference
+## but does share information on the varaition among species in the difference
 ## but has a regularizing prior to reduce differences for data-sparse species to 0
 ## this is tidy, but it assumes that the difference between the two kinds of slopes == 0
 ## if there are solid data to the contrary, this will show it
